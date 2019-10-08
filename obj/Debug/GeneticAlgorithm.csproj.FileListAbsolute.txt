@@ -1,0 +1,7 @@
+F:\C#Pros\MyProject\GeneticAlgorithm\bin\Debug\GeneticAlgorithm.exe.config
+F:\C#Pros\MyProject\GeneticAlgorithm\bin\Debug\GeneticAlgorithm.exe
+F:\C#Pros\MyProject\GeneticAlgorithm\bin\Debug\GeneticAlgorithm.pdb
+F:\C#Pros\MyProject\GeneticAlgorithm\obj\Debug\GeneticAlgorithm.csprojAssemblyReference.cache
+F:\C#Pros\MyProject\GeneticAlgorithm\obj\Debug\GeneticAlgorithm.csproj.CoreCompileInputs.cache
+F:\C#Pros\MyProject\GeneticAlgorithm\obj\Debug\GeneticAlgorithm.exe
+F:\C#Pros\MyProject\GeneticAlgorithm\obj\Debug\GeneticAlgorithm.pdb
