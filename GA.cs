@@ -12,20 +12,23 @@ namespace GeneticAlgorithm
         private int scale;// 种群规模
         private int cityNum; // 城市数量，染色体长度
         private int MAX_GEN; // 运行代数
-        private int[,] distance; // 距离矩阵
+        private double[,] distance; // 距离矩阵
         private int bestT;// 最佳出现代数
-        private int bestLength; // 最佳长度
+        private double bestLength; // 最佳长度
         private int[] bestTour; // 最佳路径
 
         // 初始种群，父代种群，行数表示种群规模，一行代表一个个体，即染色体，列表示染色体基因片段
         private int[,] oldPopulation;
         private int[,] newPopulation;// 新的种群，子代种群
-        private int[] fitness;// 种群适应度，表示种群中各个个体的适应度
+        private double[] fitness;// 种群适应度，表示种群中各个个体的适应度
 
         private float[] Pi;// 种群中各个个体的累计概率
         private float Pc;// 交叉概率
         private float Pm;// 变异概率
         private int t;// 当前代数
+
+        private int V = 10; //速度
+        private double[] idealDistance; //理想距离
 
         private Random random;
 
@@ -52,24 +55,26 @@ namespace GeneticAlgorithm
             int[] y;
             string strbuff;
 
-            StreamReader data = new StreamReader(filename, Encoding.Default);
-
-            distance = new int[cityNum, cityNum];
-
-            x = new int[cityNum];
-            y = new int[cityNum];
-
-            for (int i = 0; i < cityNum; i++)
+            using (StreamReader data = new StreamReader(filename, Encoding.Default))
             {
 
-                // 读取一行数据，数据格式1 6734 1453
-                strbuff = data.ReadLine();
+                distance = new double[cityNum, cityNum];
 
-                // 字符分割
-                string[] strcol = strbuff.Split();
+                x = new int[cityNum];
+                y = new int[cityNum];
 
-                x[i] = Convert.ToInt32(strcol[1]);// x坐标
-                y[i] = Convert.ToInt32(strcol[2]);// y坐标
+                for (int i = 0; i < cityNum; i++)
+                {
+
+                    // 读取一行数据，数据格式1 6734 1453
+                    strbuff = data.ReadLine();
+
+                    // 字符分割
+                    string[] strcol = strbuff.Split();
+
+                    x[i] = Convert.ToInt32(strcol[1]);// x坐标
+                    y[i] = Convert.ToInt32(strcol[2]);// y坐标
+                }
             }
 
             // 计算距离矩阵			
@@ -104,10 +109,26 @@ namespace GeneticAlgorithm
 
             newPopulation = new int[scale, cityNum];
             oldPopulation = new int[scale, cityNum];
-            fitness = new int[scale];
+            fitness = new double[scale];
             Pi = new float[scale];
 
             random = new Random(DateTime.Now.Millisecond);
+
+            //随机生成限制条件
+            Random randomNum = new Random();
+            idealDistance = new double[cityNum];
+            for (int r = 0; r < cityNum; r++)
+            {
+                if (r == 10 || r == 20 || r == 30 || r== 38 )
+                {
+                    idealDistance[r] = r * randomNum.Next(40,60) * V;
+                }
+                else
+                {
+                    idealDistance[r] = int.MaxValue;
+                }
+                
+            }
 
         }
 
@@ -115,7 +136,6 @@ namespace GeneticAlgorithm
         void InitGroup()
         {
             int i, j, k;
-            // Random random = new Random(System.currentTimeMillis());
             for (k = 0; k < scale; k++)// 种群数
             {
                 oldPopulation[k, 0] = random.Next(65535) % cityNum;
@@ -140,18 +160,42 @@ namespace GeneticAlgorithm
 
 
 
-        public int Evaluate(int[] chromosome)
+        public double Evaluate(int[] chromosome)
         {
-            // 0123
-            int len = 0;
+            double len = 0.0;
+            double countDiff = 0.0;   //累计差值
+            double penatly = 0.0; //惩罚函数
+
             // 染色体，起始城市,城市1,城市2...城市n
             for (int i = 1; i < cityNum; i++)
             {
                 len += distance[chromosome[i - 1], chromosome[i]];
+
+                
+                penatly += Getpenatly(len,ref countDiff, ref penatly,chromosome[i]);
             }
+
             // 城市n,起始城市
-            len += distance[chromosome[cityNum - 1], chromosome[0]];
+            len += distance[chromosome[cityNum - 1], chromosome[0]] + penatly;
+         
             return len;
+        }
+
+
+        /// <summary>
+        /// 遍历每个节点，是否超过理想的距离
+        /// </summary>
+        public double Getpenatly(double len,ref double countDiff, ref double penatly,int cityNode)
+        {         
+            double idealDis = idealDistance[cityNode];
+            if (len > idealDis)
+            {
+                countDiff += len - idealDis;
+                penatly = Math.Pow(0.1 * t, 0.8) * Math.Pow(countDiff, 0.8);
+              
+            }//大于理想距离
+
+            return penatly;
         }
 
         // 计算种群中各个个体的累积概率，前提是已经计算出各个个体的适应度fitness[max]，作为赌轮选择策略一部分，Pi[max]
@@ -181,7 +225,7 @@ namespace GeneticAlgorithm
         public void SelectBestGh()
         {
             int k, i, maxid;
-            int maxevaluation;
+            double maxevaluation;
 
             maxid = 0;
             maxevaluation = fitness[0];
@@ -204,7 +248,6 @@ namespace GeneticAlgorithm
                 }
             }
 
-            // System.out.println("代数 " + t + " " + maxevaluation);
             // 复制染色体，k表示新染色体在种群中的位置，kk表示旧的染色体在种群中的位置
             CopyGh(0, maxid);// 将当代种群中适应度最高的染色体k复制到新种群中，排在第一位0
         }
