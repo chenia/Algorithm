@@ -10,7 +10,6 @@ namespace GeneticAlgorithm
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Start....");
             Ga genAlg = new Ga(30, 48, 1000, 0.8f, 0.9f);
             genAlg.Init("C:\\Users\\chenia\\Desktop\\data.txt");
             genAlg.Solve();
