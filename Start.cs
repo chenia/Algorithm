@@ -14,6 +14,7 @@ namespace GeneticAlgorithm
             genAlg.Init("C:\\Users\\chenia\\Desktop\\data.txt");
             genAlg.Solve();
             Console.ReadKey();
+
         }
     }
 }
