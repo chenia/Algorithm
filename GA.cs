@@ -9,26 +9,26 @@ namespace GeneticAlgorithm
 {
     class Ga
     {
-        private int scale;// 种群规模
-        private int cityNum; // 城市数量，染色体长度
-        private int MAX_GEN; // 运行代数
-        private double[,] distance; // 距离矩阵
-        private int bestT;// 最佳出现代数
-        private double bestLength; // 最佳长度
-        private int[] bestTour; // 最佳路径
+        private int scale;                    // 种群规模
+        private int cityNum;                  // 城市数量，染色体长度
+        private int MAX_GEN;                  // 运行代数
+        private double[,] distance;           // 距离矩阵
+        private int bestGen;                  // 最佳出现代数
+        private double bestDistance;          // 最佳长度
+        private int[] bestRoute;              // 最佳路径
 
-        // 初始种群，父代种群，行数表示种群规模，一行代表一个个体，即染色体，列表示染色体基因片段
+ 
         private int[,] oldPopulation;
-        private int[,] newPopulation;// 新的种群，子代种群
-        private double[] fitness;// 种群适应度，表示种群中各个个体的适应度
+        private int[,] newPopulation;         // 新的种群
+        private double[] fitness;             // 种群适应度
 
-        private float[] Pi;// 种群中各个个体的累计概率
-        private float Pc;// 交叉概率
-        private float Pm;// 变异概率
-        private int t;// 当前代数
+        private float[] Pi;                   // 种群中各个个体的累计概率
+        private float Pc;                     // 交叉概率
+        private float Pm;                     // 变异概率
+        private int Gen;                      // 当前代数
 
-        private int V = 10; //速度
-        private double[] idealDistance; //理想距离
+        private int V = 10;                   //速度
+        private double[] idealDistance;       //理想距离
 
         private Random random;
 
@@ -47,10 +47,12 @@ namespace GeneticAlgorithm
             Pm = m;
         }
 
-
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        /// <param name="filename">数据存放的地址</param>
         public void Init(string filename)
         {
-            // 读取数据
             int[] x;
             int[] y;
             string strbuff;
@@ -65,22 +67,20 @@ namespace GeneticAlgorithm
 
                 for (int i = 0; i < cityNum; i++)
                 {
-
-                    // 读取一行数据，数据格式1 6734 1453
                     strbuff = data.ReadLine();
 
                     // 字符分割
                     string[] strcol = strbuff.Split();
 
-                    x[i] = Convert.ToInt32(strcol[1]);// x坐标
-                    y[i] = Convert.ToInt32(strcol[2]);// y坐标
+                    x[i] = Convert.ToInt32(strcol[1]);  // x坐标
+                    y[i] = Convert.ToInt32(strcol[2]);  // y坐标
                 }
             }
 
             // 计算距离矩阵			
             for (int i = 0; i < cityNum - 1; i++)
             {
-                distance[i, i] = 0; // 对角线为0
+                distance[i, i] = 0;  
                 for (int j = i + 1; j < cityNum; j++)
                 {
                     double rij = Math
@@ -102,10 +102,10 @@ namespace GeneticAlgorithm
             }
             distance[cityNum - 1, cityNum - 1] = 0;
 
-            bestLength = int.MaxValue;
-            bestTour = new int[cityNum + 1];
-            bestT = 0;
-            t = 0;
+            bestDistance = int.MaxValue;
+            bestRoute = new int[cityNum + 1];
+            bestGen = 0;
+            Gen = 0;
 
             newPopulation = new int[scale, cityNum];
             oldPopulation = new int[scale, cityNum];
@@ -132,14 +132,16 @@ namespace GeneticAlgorithm
 
         }
 
-        // 初始化种群
-        void InitGroup()
+        /// <summary>
+        /// 初始化种群
+        /// </summary>
+        private void InitGroup()
         {
             int i, j, k;
-            for (k = 0; k < scale; k++)// 种群数
+            for (k = 0; k < scale; k++)
             {
                 oldPopulation[k, 0] = random.Next(65535) % cityNum;
-                for (i = 1; i < cityNum;)// 染色体长度
+                for (i = 1; i < cityNum;)
                 {
                     oldPopulation[k, i] = random.Next(65535) % cityNum;
                     for (j = 0; j < i; j++)
@@ -158,26 +160,28 @@ namespace GeneticAlgorithm
             }
         }
 
-
-
-        public double Evaluate(int[] chromosome)
+        /// <summary>
+        /// 计算适应度函数值
+        /// </summary>
+        /// <param name="chromosome"></param>
+        /// <returns></returns>
+        private double Evaluate(int[] chromosome)
         {
             double len = 0.0;
-            double countDiff = 0.0;   //累计差值
-            double penatly = 0.0; //惩罚函数
+            double countDiff = 0.0;    //累计差值
+            double penatly = 0.0;      //惩罚函数
 
             // 染色体，起始城市,城市1,城市2...城市n
             for (int i = 1; i < cityNum; i++)
             {
                 len += distance[chromosome[i - 1], chromosome[i]];
-
                 
-                penatly += Getpenatly(len,ref countDiff, ref penatly,chromosome[i]);
+                Getpenatly(len,ref countDiff, ref penatly,chromosome[i]);
             }
 
             // 城市n,起始城市
-            len += distance[chromosome[cityNum - 1], chromosome[0]] + penatly;
-         
+            len += (distance[chromosome[cityNum - 1], chromosome[0]] + penatly);
+
             return len;
         }
 
@@ -185,24 +189,25 @@ namespace GeneticAlgorithm
         /// <summary>
         /// 遍历每个节点，是否超过理想的距离
         /// </summary>
-        public double Getpenatly(double len,ref double countDiff, ref double penatly,int cityNode)
+        private void Getpenatly(double len,ref double countDiff, ref double penatly,int cityNode)
         {         
             double idealDis = idealDistance[cityNode];
             if (len > idealDis)
             {
                 countDiff += len - idealDis;
-                penatly = Math.Pow(0.1 * t, 0.8) * Math.Pow(countDiff, 0.8);
+                penatly += Math.Pow(0.1 * Gen, 0.8) * Math.Pow(countDiff, 0.8);
               
             }//大于理想距离
-
-            return penatly;
+            
         }
-
-        // 计算种群中各个个体的累积概率，前提是已经计算出各个个体的适应度fitness[max]，作为赌轮选择策略一部分，Pi[max]
-        void CountRate()
+      
+        /// <summary>
+        /// 计算种群中各个个体的累积概率
+        /// </summary>
+        private void CountRate()
         {
             int k;
-            double sumFitness = 0;// 适应度总和
+            double sumFitness = 0;
 
             double[] tempf = new double[scale];
 
@@ -220,40 +225,45 @@ namespace GeneticAlgorithm
 
         }
 
-        // 挑选某代种群中适应度最高的个体，直接复制到子代中
-        // 前提是已经计算出各个个体的适应度Fitness[max]
-        public void SelectBestGh()
+        
+        /// <summary>
+        /// 挑选某代种群中适应度最高的个体，直接复制到子代中
+        /// </summary>
+        private void SelectBestIndividual()
         {
-            int k, i, maxid;
-            double maxevaluation;
+            int k, i, maxId;
+            double maxEvaluation;
 
-            maxid = 0;
-            maxevaluation = fitness[0];
+            maxId = 0;
+            maxEvaluation = fitness[0];
             for (k = 1; k < scale; k++)
             {
-                if (maxevaluation > fitness[k])
+                if (maxEvaluation > fitness[k])
                 {
-                    maxevaluation = fitness[k];
-                    maxid = k;
+                    maxEvaluation = fitness[k];
+                    maxId = k;
                 }
             }
 
-            if (bestLength > maxevaluation)
+            if (bestDistance > maxEvaluation)
             {
-                bestLength = maxevaluation;
-                bestT = t;// 最好的染色体出现的代数;
+                bestDistance = maxEvaluation;
+                bestGen = Gen;
                 for (i = 0; i < cityNum; i++)
                 {
-                    bestTour[i] = oldPopulation[maxid, i];
+                    bestRoute[i] = oldPopulation[maxId, i];
                 }
             }
 
-            // 复制染色体，k表示新染色体在种群中的位置，kk表示旧的染色体在种群中的位置
-            CopyGh(0, maxid);// 将当代种群中适应度最高的染色体k复制到新种群中，排在第一位0
+            ProductIndividual(0, maxId);// 将当代种群中适应度最高的染色体k复制到新种群中，排在第一位0
         }
 
-        // 复制染色体，k表示新染色体在种群中的位置，kk表示旧的染色体在种群中的位置
-        public void CopyGh(int k, int kk)
+        /// <summary>
+        /// 复制染色体
+        /// </summary>
+        /// <param name="k">新染色体在种群中的位置</param>
+        /// <param name="kk">旧的染色体在种群中的位置</param>
+        private void ProductIndividual(int k, int kk)
         {
             int i;
             for (i = 0; i < cityNum; i++)
@@ -262,16 +272,16 @@ namespace GeneticAlgorithm
             }
         }
 
-        // 赌轮选择策略挑选
-        public void Select()
+        /// <summary>
+        /// 赌轮选择策略挑选
+        /// </summary>
+        private void Select()
         {
             int k, i, selectId;
             float ran1;
-            // Random random = new Random(System.currentTimeMillis());
             for (k = 1; k < scale; k++)
             {
                 ran1 = (float)(random.Next(65535) % 1000 / 1000.0);
-                // System.out.println("概率"+ran1);
                 // 产生方式
                 for (i = 0; i < scale; i++)
                 {
@@ -281,51 +291,43 @@ namespace GeneticAlgorithm
                     }
                 }
                 selectId = i;
-                // System.out.println("选中" + selectId);
-                CopyGh(k, selectId);
+ 
+                ProductIndividual(k, selectId);
             }
         }
 
-        //进化函数，正常交叉变异
-        public void Evolution()
+        /// <summary>
+        /// 进化函数，正常交叉变异
+        /// </summary>
+        private void Evolution()
         {
             int k;
             // 挑选某代种群中适应度最高的个体
-            SelectBestGh();
+            SelectBestIndividual();
 
             // 赌轮选择策略挑选scale-1个下一代个体
             Select();
 
-            // Random random = new Random(System.currentTimeMillis());
             double r;
 
-            // 交叉方法
+            // 交叉及变异
             for (k = 0; k < scale; k = k + 2)
             {
-                r = random.NextDouble();// /产生概率
-                                        // System.out.println("交叉率..." + r);
+                r = random.NextDouble();
                 if (r < Pc)
                 {
-                    // System.out.println(k + "与" + k + 1 + "进行交叉...");
-                    //OXCross(k, k + 1);// 进行交叉
                     OXCross1(k, k + 1);
                 }
                 else
                 {
-                    r = random.NextDouble();// /产生概率
-                                            // System.out.println("变异率1..." + r);
-                                            // 变异
+                    r = random.NextDouble();
                     if (r < Pm)
                     {
-                        // System.out.println(k + "变异...");
                         OnCVariation(k);
                     }
-                    r = random.NextDouble();// /产生概率
-                                            // System.out.println("变异率2..." + r);
-                                            // 变异
+                    r = random.NextDouble();
                     if (r < Pm)
                     {
-                        // System.out.println(k + 1 + "变异...");
                         OnCVariation(k + 1);
                     }
                 }
@@ -333,37 +335,35 @@ namespace GeneticAlgorithm
             }
         }
 
-        //进化函数，保留最好染色体不进行交叉变异
-        public void Evolution1()
+        /// <summary>
+        /// 进化函数，保留最好染色体不进行交叉变异
+        /// </summary>
+        private void Evolution1()
         {
             int k;
             // 挑选某代种群中适应度最高的个体
-            SelectBestGh();
+            SelectBestIndividual();
 
             // 赌轮选择策略挑选scale-1个下一代个体
             Select();
 
-            // Random random = new Random(System.currentTimeMillis());
             double r;
 
             for (k = 1; k + 1 < scale / 2; k = k + 2)
             {
-                r = random.NextDouble();// /产生概率
+                r = random.NextDouble();
                 if (r < Pc)
                 {
-                    OXCross1(k, k + 1);// 进行交叉
-                                       //OXCross(k,k+1);//进行交叉
+                    OXCross1(k, k + 1);
                 }
                 else
                 {
-                    r = random.NextDouble();// /产生概率
-                                            // 变异
+                    r = random.NextDouble();
                     if (r < Pm)
                     {
                         OnCVariation(k);
                     }
-                    r = random.NextDouble();// /产生概率
-                                            // 变异
+                    r = random.NextDouble();
                     if (r < Pm)
                     {
                         OnCVariation(k + 1);
@@ -372,7 +372,7 @@ namespace GeneticAlgorithm
             }
             if (k == scale / 2 - 1)// 剩最后一个染色体没有交叉L-1
             {
-                r = random.NextDouble();// /产生概率
+                r = random.NextDouble();
                 if (r < Pm)
                 {
                     OnCVariation(k);
@@ -381,8 +381,12 @@ namespace GeneticAlgorithm
 
         }
 
-        // 类OX交叉算子
-        void OXCross(int k1, int k2)
+        /// <summary>
+        /// 顺序交叉
+        /// </summary>
+        /// <param name="k1">交叉的染色体序号</param>
+        /// <param name="k2">交叉的染色体序号</param>
+        private void OXCross(int k1, int k2)
         {
             int i, j, k, flag;
             int ran1, ran2, temp;
@@ -390,10 +394,8 @@ namespace GeneticAlgorithm
             int[] Gh2 = new int[cityNum];
 
 
-            ran1 = random.Next(65535) % cityNum;
-            ran2 = random.Next(65535) % cityNum;
-
-
+            ran1 = random.Next(65535) % cityNum;   //交叉的起始位置
+            ran2 = random.Next(65535) % cityNum;   //交叉的结束位置
 
             while (ran1 == ran2)
             {
@@ -416,7 +418,8 @@ namespace GeneticAlgorithm
             }
             // 已近赋值i=ran2-ran1个基因
 
-            for (k = 0, j = flag; j < cityNum;)// 染色体长度
+            for (k = 0, j = flag; j < cityNum;)
+
             {
                 Gh1[j] = newPopulation[k1, k++];
                 for (i = 0; i < flag; i++)
@@ -432,7 +435,7 @@ namespace GeneticAlgorithm
                 }
             }
 
-            for (k = 0, j = flag; j < cityNum;)// 染色体长度
+            for (k = 0, j = flag; j < cityNum;)
             {
                 Gh2[j] = newPopulation[k2, k++];
                 for (i = 0; i < flag; i++)
@@ -450,20 +453,23 @@ namespace GeneticAlgorithm
 
             for (i = 0; i < cityNum; i++)
             {
-                newPopulation[k1, i] = Gh1[i];// 交叉完毕放回种群
+                newPopulation[k1, i] = Gh1[i];
                 newPopulation[k2, i] = Gh2[i];// 交叉完毕放回种群
             }
 
         }
 
-        // 交叉算子,相同染色体交叉产生不同子代染色体
-        public void OXCross1(int k1, int k2)
+        /// <summary>
+        /// 交叉操作,相同染色体交叉产生不同子代染色体
+        /// </summary>
+        /// <param name="k1"></param>
+        /// <param name="k2"></param>
+        private void OXCross1(int k1, int k2)
         {
             int i, j, k, flag;
             int ran1, ran2, temp;
             int[] Gh1 = new int[cityNum];
             int[] Gh2 = new int[cityNum];
-            // Random random = new Random(System.currentTimeMillis());
 
             ran1 = random.Next(65535) % cityNum;
             ran2 = random.Next(65535) % cityNum;
@@ -487,7 +493,7 @@ namespace GeneticAlgorithm
 
             flag = i;// 染色体2原基因开始位置
 
-            for (k = 0, j = flag; j < cityNum;)// 染色体长度
+            for (k = 0, j = flag; j < cityNum;)
             {
                 Gh2[j] = newPopulation[k2, k++];
                 for (i = 0; i < flag; i++)
@@ -504,7 +510,7 @@ namespace GeneticAlgorithm
             }
 
             flag = ran1;
-            for (k = 0, j = 0; k < cityNum;)// 染色体长度
+            for (k = 0, j = 0; k < cityNum;)
             {
                 Gh1[j] = newPopulation[k1, k++];
                 for (i = 0; i < flag; i++)
@@ -529,18 +535,20 @@ namespace GeneticAlgorithm
 
             for (i = 0; i < cityNum; i++)
             {
-                newPopulation[k1, i] = Gh1[i];// 交叉完毕放回种群
+                newPopulation[k1, i] = Gh1[i];
                 newPopulation[k2, i] = Gh2[i];// 交叉完毕放回种群
             }
         }
 
-        // 多次对换变异算子
-        public void OnCVariation(int k)
+        /// <summary>
+        /// 变异 多次对换变异算子
+        /// </summary>
+        /// <param name="k"></param>
+        private void OnCVariation(int k)
         {
             int ran1, ran2, temp;
             int count;// 对换次数
 
-            // Random random = new Random(System.currentTimeMillis());
             count = random.Next(65535) % cityNum;
 
             for (int i = 0; i < count; i++)
@@ -559,12 +567,10 @@ namespace GeneticAlgorithm
 
 
         }
-
-        public void GetChrom()
-        {
-
-        }
-
+   
+        /// <summary>
+        /// 开始
+        /// </summary>
         public void Solve()
         {
             int i;
@@ -572,7 +578,7 @@ namespace GeneticAlgorithm
 
             // 初始化种群
             InitGroup();
-            // 计算初始化种群适应度，Fitness[max]
+            // 计算初始化种群适应度
             for (k = 0; k < scale; k++)
             {
                 int[] chrom = new int[cityNum];
@@ -583,20 +589,9 @@ namespace GeneticAlgorithm
                 fitness[k] = Evaluate(chrom);
                 
             }
-            // 计算初始化种群中各个个体的累积概率，Pi[max]
             CountRate();
-            Console.WriteLine("初始种群...");
-            for (k = 0; k < scale; k++)
-            {
-                for (i = 0; i < cityNum; i++)
-                {
-                    Console.Write(oldPopulation[k, i] + ",");
-                }
-                Console.WriteLine();
-                Console.WriteLine("----" + fitness[k] + " " + Pi[k]);
-            }
-
-            for (t = 0; t < MAX_GEN; t++)
+            
+            for (Gen = 0; Gen < MAX_GEN; Gen++)
             {
                 //evolution1();
                 Evolution();
@@ -634,14 +629,14 @@ namespace GeneticAlgorithm
             }
 
             Console.WriteLine("最佳长度出现代数：");
-            Console.WriteLine(bestT);
+            Console.WriteLine(bestGen);
             Console.WriteLine("最佳长度");
-            Console.WriteLine(bestLength);
+            Console.WriteLine(bestDistance);
             Console.WriteLine("最佳路径：");
 
             for (i = 0; i < cityNum; i++)
             {
-                Console.Write(bestTour[i] + ",");
+                Console.Write(bestRoute[i] + ",");
             }
 
         }
